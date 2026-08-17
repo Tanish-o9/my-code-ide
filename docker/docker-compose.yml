@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  database:
+    image: mongo:latest
+    container_name: cloud_ide_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - cloud_ide_net
+    restart: always
+
+  server:
+    build:
+      context: ../
+      dockerfile: docker/server.Dockerfile
+    container_name: cloud_ide_server
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://database:27017/cloud-ide
+      - CLIENT_ORIGIN=http://localhost:5173
+      - JWT_SECRET=fallback_docker_jwt_secret_key_12345
+    depends_on:
+      - database
+    networks:
+      - cloud_ide_net
+    volumes:
+      - ../server:/app/server
+      - ../workspaces:/app/workspaces
+
+  client:
+    build:
+      context: ../
+      dockerfile: docker/client.Dockerfile
+    container_name: cloud_ide_client
+    ports:
+      - "5173:5173"
+    networks:
+      - cloud_ide_net
+    volumes:
+      - ../client:/app/client
+    depends_on:
+      - server
+
+volumes:
+  mongodb_data:
+
+networks:
+  cloud_ide_net:
+    driver: bridge
